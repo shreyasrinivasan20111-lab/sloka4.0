@@ -850,9 +850,21 @@ def signal_handler(signum, frame):
     cleanup_sessions()
     sys.exit(0)
 
-# Register signal handlers
-signal.signal(signal.SIGTERM, signal_handler)
-signal.signal(signal.SIGINT, signal_handler)
+# Register signal handlers only in non-serverless environments
+# Serverless environments like Vercel handle process lifecycle differently
+try:
+    # Check if we're in a serverless environment
+    is_serverless = os.getenv('VERCEL') or os.getenv('AWS_LAMBDA_FUNCTION_NAME') or os.getenv('FUNCTIONS_WORKER_RUNTIME')
+    
+    if not is_serverless:
+        signal.signal(signal.SIGTERM, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
+        print("🔄 Signal handlers registered for graceful shutdown")
+    else:
+        print("☁️  Serverless environment detected - skipping signal handlers")
+        
+except Exception as e:
+    print(f"⚠️  Warning: Could not register signal handlers: {e}")
 
 # For Vercel deployment, the app instance is used directly
 # For local development, we can still run with uvicorn
