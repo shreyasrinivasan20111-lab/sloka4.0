@@ -18,14 +18,26 @@ from datetime import datetime, timedelta
 # Get the directory where this script is located
 BASE_DIR = Path(__file__).parent
 
-# Configure comprehensive logging
+# Configure comprehensive logging - adapt to environment
+log_handlers = [logging.StreamHandler(sys.stdout)]
+
+# Only add file handler in local development (not in serverless environments like Vercel)
+try:
+    # Check if we can write to the file system (will fail in Vercel/serverless)
+    test_file = BASE_DIR / 'test_write.tmp'
+    test_file.touch()
+    test_file.unlink()  # Clean up
+    # If we get here, file system is writable - add file handler
+    log_handlers.append(logging.FileHandler(BASE_DIR / 'app.log', mode='a', encoding='utf-8'))
+    print("📝 File logging enabled (local environment)")
+except (OSError, PermissionError):
+    # Read-only file system (Vercel/serverless) - only console logging
+    print("📝 Console-only logging (serverless environment)")
+
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s | %(name)s | %(levelname)s | %(funcName)s:%(lineno)d | %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(BASE_DIR / 'app.log', mode='a', encoding='utf-8')
-    ]
+    handlers=log_handlers
 )
 
 # Create logger for this module
@@ -196,7 +208,14 @@ async def startup_logging_event():
     logger.info(f"📊 Session management enabled - active sessions will be tracked")
     logger.info(f"🔄 Graceful shutdown handlers registered")
     logger.info(f"🔍 Enhanced error logging system enabled with stack traces")
-    logger.info(f"📝 Logging to both console and app.log file")
+    
+    # Check if file logging is available
+    file_logging = any(isinstance(handler, logging.FileHandler) for handler in logger.handlers)
+    if file_logging:
+        logger.info(f"📝 Logging to both console and app.log file")
+    else:
+        logger.info(f"📝 Console-only logging (serverless environment)")
+    
     logger.info(f"🎯 Request/Response middleware active for comprehensive debugging")
 
 @app.on_event("shutdown")
