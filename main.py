@@ -360,25 +360,31 @@ async def health_check():
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
     try:
-        # For Vercel deployment, serve a simple HTML response since static files are handled by api/
-        return HTMLResponse("""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Sloka 4.0 - Spiritual Course Management</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <link rel="stylesheet" href="/static/styles.css">
-        </head>
-        <body>
-            <div class="container">
-                <h1>🕉️ Sloka 4.0</h1>
-                <p>Spiritual Course Management Platform</p>
-                <p>Loading...</p>
-            </div>
-            <script src="/static/app.js"></script>
-        </body>
-        </html>
-        """)
+        # Serve the actual index.html file from api/static directory
+        html_path = BASE_DIR / "api" / "static" / "index.html"
+        if html_path.exists():
+            return FileResponse(str(html_path), media_type="text/html")
+        else:
+            # Fallback HTML if the file is missing
+            logger.warning("index.html not found in api/static/, serving fallback")
+            return HTMLResponse("""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Sloka 4.0 - Spiritual Course Management</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <link rel="stylesheet" href="/static/styles.css">
+            </head>
+            <body>
+                <div class="container">
+                    <h1>🕉️ Sloka 4.0</h1>
+                    <p>Spiritual Course Management Platform</p>
+                    <p>Error: Main page not found. Please check deployment.</p>
+                </div>
+                <script src="/static/app.js"></script>
+            </body>
+            </html>
+            """)
     except Exception as e:
         logger.error(f"Error serving root: {e}")
         return HTMLResponse("<h1>Service Temporarily Unavailable</h1>", status_code=503)

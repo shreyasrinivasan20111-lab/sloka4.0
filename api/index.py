@@ -16,6 +16,14 @@ try:
     API_DIR = Path(__file__).parent
     STATIC_DIR = API_DIR / "static"
     
+    # Root HTML endpoint for Vercel
+    @app.get("/api/")
+    async def serve_index_html():
+        html_file = STATIC_DIR / "index.html"
+        if html_file.exists():
+            return FileResponse(str(html_file), media_type="text/html")
+        return Response("HTML not found", status_code=404)
+    
     # Static file endpoints for Vercel
     @app.get("/api/static/styles.css")
     async def serve_css():

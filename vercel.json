@@ -21,10 +21,14 @@
     },
     {
       "src": "/favicon.ico",
-      "dest": "/api/favicon.ico"
+      "dest": "/api/static/favicon.ico"
     },
     {
       "src": "/api/(.*)",
+      "dest": "/api/index.py"
+    },
+    {
+      "src": "/",
       "dest": "/api/index.py"
     },
     {
