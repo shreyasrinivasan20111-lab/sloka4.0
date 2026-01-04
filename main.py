@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request, File, UploadFile, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, Response
 from typing import List, Optional, Dict, Any
 from datetime import timedelta
@@ -147,11 +146,6 @@ async def error_logging_middleware(request: Request, call_next):
                 "timestamp": datetime.now().isoformat()
             }
         )
-
-# Mount static files with flexible path
-static_path = BASE_DIR / "static"
-if static_path.exists():
-    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
 # Security
 security = HTTPBearer()
@@ -329,17 +323,18 @@ async def health_check():
             health_status["database"] = "warning"
             health_status["database_error"] = str(db_error)[:100]  # Truncate long errors
         
-        # Check static files availability
+        # Check API static files availability (for Vercel deployment)
         try:
-            css_path = BASE_DIR / "static" / "styles.css"
-            js_path = BASE_DIR / "static" / "app.js"
-            html_path = BASE_DIR / "static" / "index.html"
+            api_static_dir = BASE_DIR / "api" / "static"
+            css_path = api_static_dir / "styles.css"
+            js_path = api_static_dir / "app.js"
+            html_path = api_static_dir / "index.html"
             
             health_status["static_files"] = {
                 "css": css_path.exists(),
                 "js": js_path.exists(), 
                 "html": html_path.exists(),
-                "static_dir": (BASE_DIR / "static").exists()
+                "api_static_dir": api_static_dir.exists()
             }
         except Exception as static_error:
             health_status["static_files"] = {"error": str(static_error)}
@@ -365,125 +360,33 @@ async def health_check():
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
     try:
-        html_path = BASE_DIR / "static" / "index.html"
-        if html_path.exists():
-            return FileResponse(str(html_path), media_type="text/html")
-        else:
-            # Return a simple HTML if static file not found (for debugging)
-            return HTMLResponse("""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Sloka 4.0 - Spiritual Course Management</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <link rel="stylesheet" href="/static/styles.css">
-            </head>
-            <body>
-                <div class="container">
-                    <h1>🕉️ Sloka 4.0</h1>
-                    <p>Spiritual Course Management Platform</p>
-                    <p>Loading...</p>
-                </div>
-                <script src="/static/app.js"></script>
-            </body>
-            </html>
-            """)
+        # For Vercel deployment, serve a simple HTML response since static files are handled by api/
+        return HTMLResponse("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Sloka 4.0 - Spiritual Course Management</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link rel="stylesheet" href="/static/styles.css">
+        </head>
+        <body>
+            <div class="container">
+                <h1>🕉️ Sloka 4.0</h1>
+                <p>Spiritual Course Management Platform</p>
+                <p>Loading...</p>
+            </div>
+            <script src="/static/app.js"></script>
+        </body>
+        </html>
+        """)
     except Exception as e:
         logger.error(f"Error serving root: {e}")
         return HTMLResponse("<h1>Service Temporarily Unavailable</h1>", status_code=503)
 
-# Static CSS route
-@app.get("/static/styles.css")
-async def get_styles():
-    try:
-        css_path = BASE_DIR / "static" / "styles.css"
-        if css_path.exists():
-            return FileResponse(str(css_path), media_type="text/css")
-        else:
-            # Return basic fallback CSS
-            return Response("""
-            /* Fallback CSS for Sloka 4.0 */
-            body { 
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                margin: 0; padding: 20px; background: #f5f5f5; line-height: 1.6;
-            }
-            .container { 
-                max-width: 800px; margin: 0 auto; background: white; 
-                padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            }
-            h1 { color: #2c3e50; text-align: center; margin-bottom: 30px; }
-            .loading { text-align: center; color: #7f8c8d; }
-            """, media_type="text/css")
-    except Exception as e:
-        logger.error(f"Error serving CSS: {e}")
-        return Response("/* CSS Error */", media_type="text/css", status_code=500)
-
-# Static JS route  
-@app.get("/static/app.js")
-async def get_app_js():
-    try:
-        js_path = BASE_DIR / "static" / "app.js"
-        if js_path.exists():
-            return FileResponse(str(js_path), media_type="application/javascript")
-        else:
-            # Return basic fallback JS
-            return Response("""
-            // Fallback JS for Sloka 4.0
-            console.log('Sloka 4.0 - Spiritual Course Management Platform');
-            document.addEventListener('DOMContentLoaded', function() {
-                console.log('Application loaded');
-                // Basic functionality can be added here
-            });
-            """, media_type="application/javascript")
-    except Exception as e:
-        logger.error(f"Error serving JS: {e}")
-        return Response("console.error('JS loading error');", media_type="application/javascript", status_code=500)
-
-# General static file route (for any other static files)
-@app.get("/static/{file_path:path}")
-async def get_static_file(file_path: str):
-    try:
-        file_full_path = BASE_DIR / "static" / file_path
-        
-        # Security check - ensure we're still within static directory
-        if not str(file_full_path).startswith(str(BASE_DIR / "static")):
-            raise HTTPException(status_code=403, detail="Access denied")
-        
-        if file_full_path.exists() and file_full_path.is_file():
-            # Determine media type based on file extension
-            media_type = "text/plain"  # default
-            if file_path.endswith('.css'):
-                media_type = "text/css"
-            elif file_path.endswith('.js'):
-                media_type = "application/javascript"
-            elif file_path.endswith('.html'):
-                media_type = "text/html"
-            elif file_path.endswith(('.png', '.jpg', '.jpeg')):
-                media_type = f"image/{file_path.split('.')[-1]}"
-            elif file_path.endswith('.svg'):
-                media_type = "image/svg+xml"
-            elif file_path.endswith('.ico'):
-                media_type = "image/x-icon"
-            
-            return FileResponse(str(file_full_path), media_type=media_type)
-        else:
-            raise HTTPException(status_code=404, detail="File not found")
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error serving static file {file_path}: {e}")
-        raise HTTPException(status_code=500, detail="Error serving static file")
-
-# Favicon route
+# Favicon route (handled by api/index.py in Vercel)
 @app.get("/favicon.ico")
 async def favicon():
-    # Try to serve SVG favicon with proper content type
-    favicon_path = BASE_DIR / "static" / "favicon.svg"
-    if favicon_path.exists():
-        return FileResponse(str(favicon_path), media_type="image/svg+xml")
-    else:
-        # Return a simple response if no favicon exists
-        raise HTTPException(status_code=404, detail="Favicon not found")
+    raise HTTPException(status_code=404, detail="Use /static/favicon.ico")
 
 # PDF Proxy route for inline viewing
 @app.get("/api/pdf-proxy")
