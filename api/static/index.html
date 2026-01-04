@@ -12,6 +12,21 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <link rel="stylesheet" href="/static/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Critical CSS to hide modals if main CSS fails to load -->
+    <style>
+        .modal {
+            display: none !important;
+        }
+        .modal.show {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+        }
+        .loading {
+            display: none;
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation -->

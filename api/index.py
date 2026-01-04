@@ -24,10 +24,27 @@ try:
             return FileResponse(str(html_file), media_type="text/html")
         return Response("HTML not found", status_code=404)
     
+    # Test endpoint to verify static file serving
+    @app.get("/api/test-static")
+    async def test_static():
+        css_exists = (STATIC_DIR / "styles.css").exists()
+        js_exists = (STATIC_DIR / "app.js").exists()
+        html_exists = (STATIC_DIR / "index.html").exists()
+        
+        return {
+            "static_dir": str(STATIC_DIR),
+            "css_exists": css_exists,
+            "js_exists": js_exists,
+            "html_exists": html_exists,
+            "css_path": str(STATIC_DIR / "styles.css"),
+            "js_path": str(STATIC_DIR / "app.js")
+        }
+    
     # Static file endpoints for Vercel
     @app.get("/api/static/styles.css")
     async def serve_css():
         css_file = STATIC_DIR / "styles.css"
+        print(f"CSS request - File exists: {css_file.exists()}, Path: {css_file}")
         if css_file.exists():
             return FileResponse(str(css_file), media_type="text/css")
         return Response("/* CSS not found */", media_type="text/css", status_code=404)
@@ -35,6 +52,7 @@ try:
     @app.get("/api/static/app.js") 
     async def serve_js():
         js_file = STATIC_DIR / "app.js"
+        print(f"JS request - File exists: {js_file.exists()}, Path: {js_file}")
         if js_file.exists():
             return FileResponse(str(js_file), media_type="application/javascript")
         return Response("console.log('JS not found');", media_type="application/javascript", status_code=404)

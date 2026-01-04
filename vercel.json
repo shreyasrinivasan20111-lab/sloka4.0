@@ -16,6 +16,10 @@
       "dest": "/api/static/app.js"
     },
     {
+      "src": "/static/favicon\\.(ico|svg)",
+      "dest": "/api/static/favicon.$1"
+    },
+    {
       "src": "/static/(.*)",
       "dest": "/api/static/$1"
     },
@@ -29,10 +33,6 @@
     },
     {
       "src": "/",
-      "dest": "/api/index.py"
-    },
-    {
-      "src": "/(.*)",
       "dest": "/api/index.py"
     }
   ]
