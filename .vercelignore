@@ -1,0 +1,52 @@
+# Vercel ignore file - DO NOT ignore static files
+# We want to include static files in deployment
+
+# Ignore development files
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+env.bak/
+venv.bak/
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore logs
+*.log
+app.log
+
+# Ignore test files
+test_*.py
+*_test.py
+
+# Ignore deployment scripts (but keep vercel.json)
+deploy_*.sh
+dev_start.sh
+prod_start.sh
+stop_server.sh
+
+# Keep everything else including:
+# - static/ directory and all its contents
+# - requirements.txt
+# - runtime.txt
+# - vercel.json
+# - main.py and other source files

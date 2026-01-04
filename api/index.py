@@ -9,8 +9,54 @@ try:
     # Import the FastAPI app from main.py
     from main import app
     
-    # Ensure app is properly configured for serverless
-    print("✅ FastAPI app imported successfully for Vercel")
+    # Add static file routes specifically for Vercel
+    from fastapi.responses import FileResponse, Response
+    
+    # Get the current API directory
+    API_DIR = Path(__file__).parent
+    STATIC_DIR = API_DIR / "static"
+    
+    # Static file endpoints for Vercel
+    @app.get("/api/static/styles.css")
+    async def serve_css():
+        css_file = STATIC_DIR / "styles.css"
+        if css_file.exists():
+            return FileResponse(str(css_file), media_type="text/css")
+        return Response("/* CSS not found */", media_type="text/css", status_code=404)
+    
+    @app.get("/api/static/app.js") 
+    async def serve_js():
+        js_file = STATIC_DIR / "app.js"
+        if js_file.exists():
+            return FileResponse(str(js_file), media_type="application/javascript")
+        return Response("console.log('JS not found');", media_type="application/javascript", status_code=404)
+    
+    @app.get("/api/static/{filename}")
+    async def serve_static_file(filename: str):
+        static_file = STATIC_DIR / filename
+        if static_file.exists() and static_file.is_file():
+            # Determine media type
+            if filename.endswith('.css'):
+                media_type = "text/css"
+            elif filename.endswith('.js'):
+                media_type = "application/javascript"
+            elif filename.endswith('.html'):
+                media_type = "text/html"
+            elif filename.endswith('.svg'):
+                media_type = "image/svg+xml"
+            elif filename.endswith('.ico'):
+                media_type = "image/x-icon"
+            elif filename.endswith(('.png', '.jpg', '.jpeg')):
+                media_type = f"image/{filename.split('.')[-1]}"
+            else:
+                media_type = "text/plain"
+            
+            return FileResponse(str(static_file), media_type=media_type)
+        
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"Static file '{filename}' not found")
+    
+    print("✅ FastAPI app imported successfully for Vercel with static file handlers")
     
 except Exception as e:
     print(f"❌ Error importing FastAPI app: {e}")
