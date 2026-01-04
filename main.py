@@ -60,14 +60,42 @@ load_dotenv()
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
 
 # Set active configuration based on environment
-if ENVIRONMENT == "production":
-    os.environ["DATABASE_URL"] = os.getenv("PROD_DATABASE_URL")
-    os.environ["BLOB_READ_WRITE_TOKEN"] = os.getenv("PROD_BLOB_READ_WRITE_TOKEN")
-    print(f"🚀 Running in PRODUCTION mode")
+# Use DATABASE_URL directly (common pattern for deployment platforms)
+database_url = os.getenv("DATABASE_URL")
+if not database_url:
+    # Fallback to environment-specific URLs if DATABASE_URL is not set
+    if ENVIRONMENT == "production":
+        database_url = os.getenv("PROD_DATABASE_URL")
+        print(f"🚀 Running in PRODUCTION mode")
+    else:
+        database_url = os.getenv("DEV_DATABASE_URL") 
+        print(f"🔧 Running in DEVELOPMENT mode")
 else:
-    os.environ["DATABASE_URL"] = os.getenv("DEV_DATABASE_URL") 
-    os.environ["BLOB_READ_WRITE_TOKEN"] = os.getenv("DEV_BLOB_READ_WRITE_TOKEN")
-    print(f"🔧 Running in DEVELOPMENT mode")
+    if ENVIRONMENT == "production":
+        print(f"🚀 Running in PRODUCTION mode with DATABASE_URL")
+    else:
+        print(f"🔧 Running in DEVELOPMENT mode with DATABASE_URL")
+
+# Set the DATABASE_URL environment variable
+if database_url:
+    os.environ["DATABASE_URL"] = database_url
+else:
+    print("⚠️  WARNING: No DATABASE_URL configured")
+
+# Configure Blob Storage Token
+blob_token = os.getenv("BLOB_READ_WRITE_TOKEN")
+if not blob_token:
+    # Fallback to environment-specific tokens if BLOB_READ_WRITE_TOKEN is not set
+    if ENVIRONMENT == "production":
+        blob_token = os.getenv("PROD_BLOB_READ_WRITE_TOKEN")
+    else:
+        blob_token = os.getenv("DEV_BLOB_READ_WRITE_TOKEN")
+
+# Set the BLOB_READ_WRITE_TOKEN environment variable
+if blob_token:
+    os.environ["BLOB_READ_WRITE_TOKEN"] = blob_token
+else:
+    print("⚠️  WARNING: No BLOB_READ_WRITE_TOKEN configured")
 
 app = FastAPI(title="🕉️ Spiritual Course Management System", version="1.0.0")
 
