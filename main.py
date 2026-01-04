@@ -213,20 +213,41 @@ async def startup_event():
         logger.info(f"🌍 Environment: {ENVIRONMENT.upper()}")
         logger.info(f"📊 Database URL: {os.getenv('DATABASE_URL', 'Not set')[:50]}...")
         
-        database.create_tables()
-        logger.info("✅ Database tables created successfully")
+        # Try to create tables with error handling
+        try:
+            database.create_tables()
+            logger.info("✅ Database tables created successfully")
+        except Exception as db_error:
+            logger.error(f"⚠️  Database initialization warning: {type(db_error).__name__}: {str(db_error)}")
+            logger.error("🔍 Database stack trace:")
+            logger.error(traceback.format_exc())
+            
+            # Check if it's a bcrypt-related error
+            if "bcrypt" in str(db_error).lower() or "password cannot be longer than 72 bytes" in str(db_error):
+                logger.warning("🔐 Bcrypt compatibility issue detected - continuing without default admin creation")
+                logger.warning("   You may need to create admin accounts manually")
+            else:
+                # For other database errors, still try to continue
+                logger.warning("   Continuing startup - some features may not work properly")
         
         # Log environment details
         logger.info(f"🔐 Admin email configured: {bool(os.getenv('ADMIN_EMAIL'))}")
         logger.info(f"🗄️  Blob storage configured: {bool(os.getenv('BLOB_READ_WRITE_TOKEN'))}")
         logger.info(f"⏰ Token expire time: {auth.ACCESS_TOKEN_EXPIRE_MINUTES} minutes")
         
-        logger.info("✅ Application startup completed successfully")
+        logger.info("✅ Application startup completed")
         
     except Exception as e:
         logger.error(f"💥 CRITICAL ERROR during startup: {type(e).__name__}: {str(e)}")
         logger.error(f"🔍 Stack trace:")
         logger.error(traceback.format_exc())
+        
+        # For critical errors, still raise to prevent broken deployment
+        # but log more helpful information
+        if "bcrypt" in str(e).lower():
+            logger.error("🔐 This appears to be a bcrypt/password hashing compatibility issue")
+            logger.error("   Common in serverless environments with different bcrypt versions")
+        
         raise
 
 @app.on_event("startup")
@@ -283,6 +304,47 @@ def get_current_admin(current_user: dict = Depends(get_current_user)):
     if current_user["type"] != "admin":
         raise HTTPException(status_code=403, detail="Not authorized as admin")
     return current_user
+
+# Health check endpoint
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint for monitoring and deployment verification"""
+    try:
+        # Basic health info
+        health_status = {
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "environment": ENVIRONMENT,
+            "version": "1.0.0"
+        }
+        
+        # Try a simple database connection test
+        try:
+            # This is a minimal test - just checking if we can connect
+            conn = database.get_db_connection()
+            conn.close()
+            health_status["database"] = "connected"
+        except Exception as db_error:
+            logger.warning(f"Health check database warning: {str(db_error)}")
+            health_status["database"] = "warning"
+            health_status["database_error"] = str(db_error)[:100]  # Truncate long errors
+        
+        # Check key environment variables
+        health_status["config"] = {
+            "database_configured": bool(os.getenv("DATABASE_URL")),
+            "blob_storage_configured": bool(os.getenv("BLOB_READ_WRITE_TOKEN")),
+            "admin_email_configured": bool(os.getenv("ADMIN_EMAIL"))
+        }
+        
+        return health_status
+        
+    except Exception as e:
+        logger.error(f"Health check error: {str(e)}")
+        return {
+            "status": "error",
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": str(e)
+        }
 
 # Static file serving
 @app.get("/", response_class=HTMLResponse)

@@ -12,11 +12,25 @@ ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 # Configure bcrypt with explicit settings to avoid compatibility issues
-pwd_context = CryptContext(
-    schemes=["bcrypt"], 
-    deprecated="auto",
-    bcrypt__rounds=12
-)
+# Handle serverless environment bcrypt issues
+try:
+    pwd_context = CryptContext(
+        schemes=["bcrypt"], 
+        deprecated="auto",
+        bcrypt__rounds=12,
+        # Add more explicit settings for serverless compatibility
+        bcrypt__default_ident="2b"  # Use most compatible bcrypt variant
+    )
+    # Test bcrypt functionality
+    test_hash = pwd_context.hash("test")
+    if not pwd_context.verify("test", test_hash):
+        raise Exception("Bcrypt verification test failed")
+    print("✅ Bcrypt configured successfully")
+except Exception as e:
+    print(f"⚠️  Bcrypt configuration issue: {e}")
+    print("🔄 Falling back to basic bcrypt configuration")
+    # Fallback configuration for problematic environments
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def verify_password(plain_password, hashed_password):
     # Handle bcrypt 72-byte limit by truncating long passwords

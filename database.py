@@ -123,14 +123,25 @@ def create_tables():
         admin_count = cursor.fetchone()[0]
         
         if admin_count == 0:
-            pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-            hashed_password = pwd_context.hash("admin123")
-            
-            cursor.execute("""
-                INSERT INTO admins (email, hashed_password, is_active) 
-                VALUES (%s, %s, %s)
-            """, ("admin@spiritual.com", hashed_password, True))
-            conn.commit()
-            print("✓ Default admin account created: admin@spiritual.com / admin123")
+            try:
+                # Import auth module to use consistent bcrypt configuration
+                import auth
+                
+                # Use the configured password hasher from auth module
+                admin_password = "admin123"
+                hashed_password = auth.get_password_hash(admin_password)
+                
+                cursor.execute("""
+                    INSERT INTO admins (email, hashed_password, is_active) 
+                    VALUES (%s, %s, %s)
+                """, ("admin@spiritual.com", hashed_password, True))
+                conn.commit()
+                print("✓ Default admin account created: admin@spiritual.com / admin123")
+                
+            except Exception as e:
+                print(f"⚠️  Warning: Could not create default admin account: {e}")
+                print("   You will need to create an admin account manually")
+                # Don't fail the entire startup if admin creation fails
+                pass
         
         print("✓ Database tables created successfully")
